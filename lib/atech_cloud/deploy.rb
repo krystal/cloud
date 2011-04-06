@@ -110,7 +110,7 @@ Capistrano::Configuration.instance(:must_exist).load do
   namespace :unicorn do
     task :start, :roles => :app  do
       upload_config
-      run "sudo -u app sh -c \"cd #{deploy_to} && bundle exec unicorn_rails -E #{fetch(:environment)} -c #{deploy_to}/config/unicorn.rb -D\""
+      run "sudo -u app sh -c \"umask 002 && cd #{deploy_to} && bundle exec unicorn_rails -E #{fetch(:environment)} -c #{deploy_to}/config/unicorn.rb -D\""
     end
 
     task :stop, :roles => :app do
