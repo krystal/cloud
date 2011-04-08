@@ -1,3 +1,5 @@
+rails_env = ENV['RAILS_ENV'] || 'production'
+
 ## Directory to use for stuff
 rails_root = File.expand_path('../../', __FILE__)
 FileUtils.mkdir_p(File.join(rails_root, 'tmp', 'sockets'))
@@ -15,11 +17,11 @@ preload_app true
 timeout $TIMEOUT
 
 ## Store the pid file safely away in the pids folder
-logger Logger.new(File.join(rails_root, 'log', 'unicorn.log'))
-pid File.join(rails_root, 'tmp', 'pids', 'unicorn.pid')
+logger Logger.new(File.join(rails_root, 'log', "unicorn.#{rails_env}.log"))
+pid File.join(rails_root, 'tmp', 'pids', "unicorn.#{rails_env}.pid")
 
 ## Listen on a unix data socket
-listen File.join(rails_root, 'tmp', 'sockets', 'unicorn.sock')
+listen File.join(rails_root, 'tmp', 'sockets', "unicorn.#{rails_env}.sock")
 
 before_fork do |server, worker|
   # When sent a USR2, Unicorn will suffix its pidfile with .oldbin and
@@ -32,7 +34,7 @@ before_fork do |server, worker|
   #
   # Using this method we get 0 downtime deploys.
 
-  old_pid = File.join(rails_root, 'tmp', 'pids', 'unicorn.pid.oldbin')
+  old_pid = File.join(rails_root, 'tmp', 'pids', "unicorn.#{rails_env}.pid.oldbin")
   if File.exists?(old_pid) && server.pid != old_pid
     begin
       Process.kill("QUIT", File.read(old_pid).to_i)
@@ -49,4 +51,3 @@ after_fork do |server, worker|
   ActiveRecord::Base.establish_connection
   srand
 end
-

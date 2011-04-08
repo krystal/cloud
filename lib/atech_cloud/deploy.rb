@@ -9,6 +9,11 @@ Capistrano::Configuration.instance(:must_exist).load do
     fetch(:deploy_to, nil) || "/opt/apps/#{fetch(:application)}"
   end
   
+  ## Return an array of all environments which should be deployed
+  def environments
+    fetch(:environments, nil) || [fetch(:environment, 'production')]
+  end
+  
   ## Deployment namespace
   namespace :deploy do
     desc 'Deploy the latest revision of the application'
@@ -45,20 +50,6 @@ Capistrano::Configuration.instance(:must_exist).load do
 
     desc 'Setup the repository on the remote server for the first time'
     task :setup, :roles => :app do
-      
-      puts
-      puts "Are you sure you wish to setup this application?"
-      puts "Any applications existing at \e[31m#{deploy_to}\e[0m will be removed immediately and will"
-      puts "become unaccessible."
-      puts
-      puts "If you do not wish this to happen, you have 5 seconds to cancel this request by"
-      puts "pressing CTRL+C..."
-      puts
-      sleep 5
-      puts
-      puts "OK then... here we go..."
-      sleep 1
-      
       run "rm -rf #{deploy_to}"
       run "git clone -n #{fetch(:repository)} #{deploy_to} --branch #{fetch(:branch)}"
       run "cd #{deploy_to} && git branch rollback && git checkout -b deploy && git branch -d #{fetch(:branch)}"
@@ -125,16 +116,22 @@ Capistrano::Configuration.instance(:must_exist).load do
   namespace :unicorn do
     task :start, :roles => :app  do
       upload_config
-      run "sudo -u app sh -c \"umask 002 && cd #{deploy_to} && bundle exec unicorn_rails -E #{fetch(:environment)} -c #{deploy_to}/config/unicorn.rb -D\""
+      for environment in environments
+        run "sudo -u app sh -c \"umask 002 && cd #{deploy_to} && bundle exec unicorn_rails -E #{environment} -c #{deploy_to}/config/unicorn.rb -D\""
+      end
     end
 
     task :stop, :roles => :app do
-      run "sudo -u app sh -c \"kill `cat #{deploy_to}/tmp/pids/unicorn.pid`\""
+      for environment in environments
+        run "sudo -u app sh -c \"kill `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
+      end
     end
 
     task :restart, :roles => :app do
       upload_config
-      run "sudo -u app sh -c \"kill -USR2 `cat #{deploy_to}/tmp/pids/unicorn.pid`\""
+      for environment in environments
+        run "sudo -u app sh -c \"kill -USR2 `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
+      end
     end
     
     task :upload_config, :roles => :app do
