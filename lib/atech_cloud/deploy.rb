@@ -1,5 +1,9 @@
 Capistrano::Configuration.instance(:must_exist).load do
   
+  ## Define the roles
+  role :app
+  role :storage
+  
   ## Server configuration
   set :user, `whoami`.chomp
   set :ssh_options, {:forward_agent => true, :port => 22}
@@ -28,7 +32,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       default
     end
 
-    task :update_code, :roles => :app do
+    task :update_code, :roles => [:app, :storage] do
       ## Create a branch for previous (pre-deployment)
       run "cd #{deploy_to} && git branch -d rollback && git branch rollback"
       ## Update remote repository and merge deploy branch into current branch
@@ -36,7 +40,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       finalise
     end
 
-    task :finalise, :roles => :app do
+    task :finalise, :roles => [:app, :storage] do
       execute = Array.new
       execute << "cd #{deploy_to}"
       execute << "git submodule init"
@@ -49,7 +53,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
 
     desc 'Setup the repository on the remote server for the first time'
-    task :setup, :roles => :app do
+    task :setup, :roles => [:app, :storage] do
       run "rm -rf #{deploy_to}"
       run "git clone -n #{fetch(:repository)} #{deploy_to} --branch #{fetch(:branch)}"
       run "cd #{deploy_to} && git branch rollback && git checkout -b deploy && git branch -d #{fetch(:branch)}"
@@ -58,7 +62,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc 'Upload the database configuration file'
-    task :upload_db_config, :roles => :app do
+    task :upload_db_config, :roles => [:app, :storage] do
       put "production:\n  adapter: mysql2\n  encoding: utf8\n  reconnect: false\n  database: #{fetch(:application, 'databasename')}\n  pool: 5\n  username: #{fetch(:application, 'dbusernmae')}\n  password: #{ENV['DBPASS'] || 'xxxx'}\n  host: #{fetch(:database_host, 'db-a.cloud.atechmedia.net')}\n", File.join(deploy_to, 'config', 'database.yml')
     end
   end
@@ -75,7 +79,7 @@ Capistrano::Configuration.instance(:must_exist).load do
   ## Rollback
   ## ==================================================================
   desc 'Rollback to the previous deployment'
-  task :rollback, :roles => :app do
+  task :rollback, :roles => [:app, :storage] do
     run "cd #{deploy_to} && git reset --hard rollback"
     deploy.finalise
     deploy.restart
