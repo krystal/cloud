@@ -72,7 +72,9 @@ Capistrano::Configuration.instance(:must_exist).load do
   ## ==================================================================
   desc 'Run database migrations on the remote'
   task :migrate, :roles => :app, :only => {:database_ops => true} do
-    run "cd #{deploy_to} && RAILS_ENV=#{fetch(:environment)} bundle exec rake db:migrate"
+    for environment in environments
+      run "cd #{deploy_to} && RAILS_ENV=#{environment} bundle exec rake db:migrate"
+    end
   end
 
   ## ==================================================================
