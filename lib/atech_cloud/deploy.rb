@@ -63,7 +63,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     
     desc 'Upload the database configuration file'
     task :upload_db_config, :roles => [:app, :storage] do
-      put "production:\n  adapter: mysql2\n  encoding: utf8\n  reconnect: false\n  database: #{fetch(:application, 'databasename')}\n  pool: 5\n  username: #{fetch(:application, 'dbusernmae')}\n  password: #{ENV['DBPASS'] || 'xxxx'}\n  host: #{fetch(:database_host, 'db-a.cloud.atechmedia.net')}\n", File.join(deploy_to, 'config', 'database.yml')
+      put "production:\n  adapter: mysql2\n  encoding: utf8\n  reconnect: true\n  database: #{fetch(:application, 'databasename')}\n  pool: 5\n  username: #{fetch(:application, 'dbusernmae')}\n  password: #{ENV['DBPASS'] || 'xxxx'}\n  host: #{fetch(:database_host, 'db-a-vip.cloud.atechmedia.net')}\n", File.join(deploy_to, 'config', 'database.yml')
     end
   end
   
