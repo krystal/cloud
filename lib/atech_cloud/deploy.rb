@@ -8,6 +8,9 @@ Capistrano::Configuration.instance(:must_exist).load do
   set :user, `whoami`.chomp
   set :ssh_options, {:forward_agent => true, :port => 22}
   
+  ## Set the `current_revision` 
+  set(:current_revision)  { capture("cd #{deploy_to} && git log --pretty=%H -n 1", :except => { :no_release => true }).chomp }
+
   ## Return the deployment path
   def deploy_to
     fetch(:deploy_to, nil) || "/opt/apps/#{fetch(:application)}"
@@ -24,6 +27,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :default do
       update_code
       restart
+      codebase.log_deployment
     end
 
     desc 'Deploy and migrate the database before restart'
@@ -146,6 +150,58 @@ Capistrano::Configuration.instance(:must_exist).load do
         template_config.gsub!('$WORKER_PROCESSES', fetch(:unicorn_workers, 4).to_s)
         template_config.gsub!('$TIMEOUT', fetch(:unicorn_timeout, 30).to_s)
         put template_config, File.join(deploy_to, 'config', 'unicorn.rb')
+      end
+    end
+  end
+  
+  ## ==================================================================
+  ## Codebase Tasks
+  ## ==================================================================
+  
+  namespace :codebase do
+    
+    desc 'Displays a list of all commits to be deployed in the next deployment'
+    task :pending do
+      current_local = `git log #{branch} --pretty=%H -n 1`.chomp
+      exec("git log #{current_revision}..#{current_local}")
+    end
+    
+    desc 'Log the current deployment in Codebase'
+    task :log_deployment do
+            
+      ## Check the repository URL
+      if fetch(:repository) =~ /git\@codebasehq.com\:(.+)\/(.+)\/(.+)\.git\z/
+        account, project, repo = $1, $2, $3
+      else
+        puts "    \e[31mRepository URL does not match a valid Codebase repository\e[0m"
+        next
+      end
+      
+      ## Check to that the token is valid etc...
+      if `cb test #{account}.codebasehq.com > /dev/null 2> /dev/null` && !$?.success?
+        puts "    \e[31mYou do not have a token for #{account}.codebasehq.com configured.\e[0m"
+        next
+      end
+      
+      ## Get the revisions
+      releases = capture("cd #{deploy_to} && git log rollback --pretty=%H -n 1 && git log deploy --pretty=%H -n 1").chomp
+      rollback, current = releases.split(/\n/)
+      if rollback == current
+        puts "    \e[31mThe current and rollback release are the same, nothing to log.\e[0m"
+        next
+      end
+      
+      cmd = ["cb deploy #{rollback} #{current}"]
+      cmd << "-s #{roles.values.collect{|r| r.servers}.flatten.collect{|s| s.host}.uniq.join(',') rescue ''}"
+      cmd << "-b #{branch}"
+      cmd << "-r #{project}:#{repo}"
+      cmd << "-h #{account}.codebasehq.com"
+      cmd << "--protocol https"
+      
+      for environment in environments
+        command_to_run = "#{cmd.join(' ')} -e #{environment}"
+        puts "  * running: #{command_to_run}"
+        system(command_to_run + "; true")
       end
     end
   end
