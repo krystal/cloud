@@ -104,19 +104,19 @@ Capistrano::Configuration.instance(:must_exist).load do
   ## ==================================================================
   desc 'Restart the whole remote application'
   task :restart, :roles => :app do
-    unicorn.restart
+    unicorn.restart unless fetch(:skip_unicorn, false)
     workers.restart if respond_to?(:workers)
   end
 
   desc 'Stop the whole remote application'
   task :stop, :roles => :app do
-    unicorn.stop
+    unicorn.stop unless fetch(:skip_unicorn, false)
     workers.stop if respond_to?(:workers)
   end
 
   desc 'Start the whole remote application'
   task :start, :roles => :app do
-    unicorn.start
+    unicorn.start unless fetch(:skip_unicorn, false)
     workers.start if respond_to?(:workers)
   end
 
