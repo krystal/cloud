@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'atech_cloud'
-  s.version = "1.0.9"
+  s.version = "1.0.11"
   s.platform = Gem::Platform::RUBY
   s.summary = "The RubyGem for the aTech Cloud"
   s.files = Dir.glob("{lib}/**/*")
