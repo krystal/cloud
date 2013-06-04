@@ -126,21 +126,24 @@ Capistrano::Configuration.instance(:must_exist).load do
   namespace :unicorn do
     task :start, :roles => :app  do
       upload_config
+      sudo = fetch(:unicorn_sudo, true) ? 'sudo -u app' : ''
       for environment in environments
-        run "sudo -u app sh -c \"umask 002 && cd #{deploy_to} && bundle exec unicorn_rails -E #{environment} -c #{deploy_to}/config/unicorn.rb -D\""
+        run "#{sudo} sh -c \"umask 002 && cd #{deploy_to} && bundle exec unicorn_rails -E #{environment} -c #{deploy_to}/config/unicorn.rb -D\""
       end
     end
 
     task :stop, :roles => :app do
+      sudo = fetch(:unicorn_sudo, true) ? 'sudo -u app' : ''
       for environment in environments
-        run "sudo -u app sh -c \"kill `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
+        run "#{sudo} sh -c \"kill `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
       end
     end
 
     task :restart, :roles => :app do
       upload_config
+      sudo = fetch(:unicorn_sudo, true) ? 'sudo -u app' : ''
       for environment in environments
-        run "sudo -u app sh -c \"kill -USR2 `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
+        run "#{sudo} sh -c \"kill -USR2 `cat #{deploy_to}/tmp/pids/unicorn.#{environment}.pid`\""
       end
     end
     
